@@ -1,0 +1,849 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AInFinity — AI WhatsApp Bot</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #050a0e;
+    --bg2: #090f14;
+    --panel: #0d1a22;
+    --border: #1a3a4a;
+    --accent: #00e5ff;
+    --accent2: #00ff9d;
+    --accent3: #ff4e6a;
+    --text: #c8dde8;
+    --dim: #4a7080;
+    --glow: 0 0 12px #00e5ff55;
+    --glow2: 0 0 20px #00ff9d44;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 16px;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── SCANLINE OVERLAY ── */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,229,255,0.013) 2px,
+      rgba(0,229,255,0.013) 4px
+    );
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  /* ── GRID BG ── */
+  .grid-bg {
+    position: fixed; inset: 0;
+    background-image:
+      linear-gradient(rgba(0,229,255,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,229,255,0.04) 1px, transparent 1px);
+    background-size: 50px 50px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ── NAVBAR ── */
+  nav {
+    position: fixed; top: 0; left: 0; right: 0;
+    z-index: 1000;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 28px;
+    height: 56px;
+    background: rgba(5,10,14,0.85);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .nav-logo {
+    font-family: 'Orbitron', monospace;
+    font-weight: 900;
+    font-size: 1.1rem;
+    letter-spacing: 2px;
+    color: var(--accent);
+    text-shadow: var(--glow);
+  }
+
+  .nav-logo span { color: var(--accent2); }
+
+  /* Clock */
+  #clock {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.88rem;
+    color: var(--accent2);
+    letter-spacing: 2px;
+    text-shadow: var(--glow2);
+    display: flex; align-items: center; gap: 8px;
+  }
+
+  #clock .date-str {
+    color: var(--dim);
+    font-size: 0.75rem;
+    letter-spacing: 1px;
+  }
+
+  /* Hamburger */
+  .hamburger {
+    width: 36px; height: 36px;
+    display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 5px;
+    cursor: pointer;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    transition: border-color .3s, box-shadow .3s;
+    padding: 4px;
+  }
+
+  .hamburger:hover {
+    border-color: var(--accent);
+    box-shadow: var(--glow);
+  }
+
+  .hamburger span {
+    display: block;
+    width: 18px; height: 1.5px;
+    background: var(--accent);
+    transition: all .35s cubic-bezier(.4,0,.2,1);
+    transform-origin: center;
+  }
+
+  .hamburger.open span:nth-child(1) { transform: translateY(6.5px) rotate(45deg); }
+  .hamburger.open span:nth-child(2) { opacity: 0; transform: scaleX(0); }
+  .hamburger.open span:nth-child(3) { transform: translateY(-6.5px) rotate(-45deg); }
+
+  /* Sidebar */
+  .sidebar {
+    position: fixed; top: 56px; right: 0;
+    width: 260px;
+    height: calc(100vh - 56px);
+    background: rgba(9,15,20,0.97);
+    border-left: 1px solid var(--border);
+    z-index: 999;
+    transform: translateX(100%);
+    transition: transform .4s cubic-bezier(.4,0,.2,1);
+    padding: 32px 0;
+    display: flex; flex-direction: column; gap: 4px;
+  }
+
+  .sidebar.open { transform: translateX(0); }
+
+  .sidebar-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--dim);
+    letter-spacing: 3px;
+    padding: 0 24px 12px;
+    text-transform: uppercase;
+  }
+
+  .sidebar a {
+    display: flex; align-items: center; gap: 12px;
+    padding: 13px 24px;
+    color: var(--text);
+    text-decoration: none;
+    font-size: 0.95rem;
+    font-weight: 600;
+    letter-spacing: 1px;
+    border-left: 2px solid transparent;
+    transition: all .2s;
+  }
+
+  .sidebar a:hover, .sidebar a.active {
+    color: var(--accent);
+    border-left-color: var(--accent);
+    background: rgba(0,229,255,0.05);
+    padding-left: 28px;
+  }
+
+  .sidebar a .icon {
+    font-size: 0.85rem;
+    width: 18px;
+    text-align: center;
+    opacity: .7;
+  }
+
+  .sidebar-divider {
+    height: 1px;
+    background: var(--border);
+    margin: 12px 24px;
+  }
+
+  .sidebar-badge {
+    margin-left: auto;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.6rem;
+    padding: 2px 6px;
+    background: rgba(0,255,157,0.12);
+    color: var(--accent2);
+    border-radius: 3px;
+    border: 1px solid rgba(0,255,157,0.3);
+  }
+
+  /* ── SECTIONS ── */
+  section {
+    position: relative;
+    z-index: 1;
+    min-height: 100vh;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 80px 24px 60px;
+  }
+
+  /* ── HERO ── */
+  #pengenalan {
+    text-align: center;
+    gap: 0;
+  }
+
+  .hero-pre {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--accent2);
+    letter-spacing: 4px;
+    margin-bottom: 20px;
+    animation: fadeUp .8s .1s both;
+  }
+
+  .hero-title {
+    font-family: 'Orbitron', monospace;
+    font-weight: 900;
+    font-size: clamp(3rem, 10vw, 7rem);
+    line-height: .9;
+    letter-spacing: -1px;
+    color: #fff;
+    text-shadow: 0 0 60px rgba(0,229,255,0.3);
+    animation: fadeUp .8s .2s both;
+  }
+
+  .hero-title .inf {
+    color: var(--accent);
+    text-shadow: 0 0 40px var(--accent), 0 0 80px rgba(0,229,255,0.4);
+  }
+
+  .hero-subtitle {
+    margin-top: 22px;
+    font-size: 1.05rem;
+    color: var(--dim);
+    letter-spacing: 1px;
+    max-width: 480px;
+    line-height: 1.7;
+    animation: fadeUp .8s .35s both;
+  }
+
+  .hero-subtitle strong { color: var(--text); }
+
+  .hero-badges {
+    display: flex; flex-wrap: wrap; justify-content: center; gap: 10px;
+    margin-top: 32px;
+    animation: fadeUp .8s .5s both;
+  }
+
+  .badge {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.72rem;
+    padding: 5px 12px;
+    border-radius: 3px;
+    letter-spacing: 1.5px;
+  }
+
+  .badge-green {
+    background: rgba(0,255,157,0.1);
+    color: var(--accent2);
+    border: 1px solid rgba(0,255,157,0.35);
+    box-shadow: 0 0 10px rgba(0,255,157,0.08);
+  }
+
+  .badge-blue {
+    background: rgba(0,229,255,0.1);
+    color: var(--accent);
+    border: 1px solid rgba(0,229,255,0.3);
+  }
+
+  .badge-red {
+    background: rgba(255,78,106,0.1);
+    color: var(--accent3);
+    border: 1px solid rgba(255,78,106,0.3);
+  }
+
+  .hero-cta {
+    display: flex; gap: 14px; flex-wrap: wrap; justify-content: center;
+    margin-top: 40px;
+    animation: fadeUp .8s .65s both;
+  }
+
+  .btn {
+    font-family: 'Orbitron', monospace;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 2px;
+    padding: 12px 28px;
+    border: none;
+    cursor: pointer;
+    text-decoration: none;
+    text-transform: uppercase;
+    transition: all .25s;
+    border-radius: 2px;
+  }
+
+  .btn-primary {
+    background: var(--accent);
+    color: #000;
+    box-shadow: 0 0 24px rgba(0,229,255,0.35);
+  }
+
+  .btn-primary:hover {
+    box-shadow: 0 0 40px rgba(0,229,255,0.6);
+    transform: translateY(-2px);
+  }
+
+  .btn-outline {
+    background: transparent;
+    color: var(--accent2);
+    border: 1px solid var(--accent2);
+  }
+
+  .btn-outline:hover {
+    background: rgba(0,255,157,0.08);
+    box-shadow: 0 0 20px rgba(0,255,157,0.2);
+    transform: translateY(-2px);
+  }
+
+  /* Floating terminal */
+  .terminal-box {
+    margin-top: 60px;
+    width: 100%;
+    max-width: 560px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5), 0 0 40px rgba(0,229,255,0.05);
+    animation: fadeUp .8s .8s both;
+  }
+
+  .terminal-top {
+    display: flex; align-items: center; gap: 7px;
+    padding: 10px 14px;
+    background: rgba(0,0,0,0.3);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .dot { width: 10px; height: 10px; border-radius: 50%; }
+  .dot-r { background: #ff5f57; }
+  .dot-y { background: #febc2e; }
+  .dot-g { background: #28c840; }
+
+  .terminal-title {
+    margin-left: 8px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--dim);
+    letter-spacing: 1px;
+  }
+
+  .terminal-body {
+    padding: 20px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.78rem;
+    line-height: 1.9;
+    color: #7fb4c8;
+  }
+
+  .terminal-body .line { display: block; }
+  .terminal-body .cmd { color: var(--accent2); }
+  .terminal-body .out { color: var(--text); padding-left: 14px; }
+  .terminal-body .ok  { color: var(--accent2); }
+  .terminal-body .err { color: var(--accent3); }
+  .terminal-body .cyan { color: var(--accent); }
+
+  .cursor {
+    display: inline-block;
+    width: 8px; height: 13px;
+    background: var(--accent);
+    vertical-align: middle;
+    animation: blink 1s step-end infinite;
+  }
+
+  /* ── STATUS ── */
+  #status {
+    gap: 0;
+    background: var(--bg2);
+  }
+
+  .section-title {
+    font-family: 'Orbitron', monospace;
+    font-weight: 700;
+    font-size: clamp(1.4rem, 4vw, 2rem);
+    color: #fff;
+    letter-spacing: 2px;
+    margin-bottom: 8px;
+    text-align: center;
+  }
+
+  .section-title .accent { color: var(--accent); }
+  .section-title .accent2 { color: var(--accent2); }
+
+  .section-sub {
+    font-size: 0.9rem;
+    color: var(--dim);
+    letter-spacing: 1px;
+    text-align: center;
+    margin-bottom: 48px;
+  }
+
+  .status-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    gap: 16px;
+    width: 100%;
+    max-width: 800px;
+  }
+
+  .status-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 22px 22px 18px;
+    transition: border-color .3s, box-shadow .3s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .status-card::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    opacity: 0;
+    transition: opacity .3s;
+  }
+
+  .status-card:hover::before { opacity: 1; }
+  .status-card:hover { border-color: rgba(0,229,255,0.35); box-shadow: var(--glow); }
+
+  .card-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--dim);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  .card-value {
+    font-family: 'Orbitron', monospace;
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--accent);
+  }
+
+  .card-value.green { color: var(--accent2); }
+  .card-value.red   { color: var(--accent3); }
+
+  .card-desc {
+    font-size: 0.82rem;
+    color: var(--dim);
+    margin-top: 6px;
+    line-height: 1.5;
+  }
+
+  .pulse-dot {
+    display: inline-block;
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--accent2);
+    box-shadow: 0 0 8px var(--accent2);
+    animation: pulse 2s infinite;
+    margin-right: 7px;
+    vertical-align: middle;
+  }
+
+  /* Progress bar */
+  .prog-bar {
+    height: 3px;
+    background: var(--border);
+    border-radius: 2px;
+    margin-top: 12px;
+    overflow: hidden;
+  }
+
+  .prog-fill {
+    height: 100%;
+    border-radius: 2px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    animation: fillBar 2s 1s both;
+  }
+
+  /* ── NOMOR AI ── */
+  #nomor {
+    background: var(--bg);
+    gap: 0;
+  }
+
+  .phone-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 36px;
+    max-width: 480px;
+    width: 100%;
+    text-align: center;
+    box-shadow: 0 0 60px rgba(0,0,0,0.4);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .phone-card::after {
+    content: '';
+    position: absolute;
+    top: -60px; right: -60px;
+    width: 180px; height: 180px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(0,229,255,0.08), transparent 70%);
+    pointer-events: none;
+  }
+
+  .wa-icon {
+    font-size: 3rem;
+    margin-bottom: 16px;
+    filter: drop-shadow(0 0 12px rgba(0,255,157,0.4));
+  }
+
+  .phone-number {
+    font-family: 'Orbitron', monospace;
+    font-size: clamp(1.2rem, 5vw, 1.8rem);
+    font-weight: 900;
+    color: var(--accent);
+    letter-spacing: 3px;
+    margin: 12px 0;
+    text-shadow: var(--glow);
+  }
+
+  .phone-hint {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--dim);
+    letter-spacing: 2px;
+    margin-bottom: 24px;
+  }
+
+  .copy-btn {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.72rem;
+    padding: 9px 20px;
+    background: rgba(0,229,255,0.1);
+    color: var(--accent);
+    border: 1px solid rgba(0,229,255,0.3);
+    border-radius: 3px;
+    cursor: pointer;
+    letter-spacing: 2px;
+    transition: all .2s;
+  }
+
+  .copy-btn:hover {
+    background: rgba(0,229,255,0.18);
+    box-shadow: var(--glow);
+  }
+
+  /* ── FOOTER ── */
+  footer {
+    position: relative; z-index: 1;
+    text-align: center;
+    padding: 28px 24px;
+    border-top: 1px solid var(--border);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--dim);
+    letter-spacing: 2px;
+    line-height: 2;
+  }
+
+  footer .f-name { color: var(--accent2); }
+
+  /* ── ANIMATIONS ── */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(28px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes blink {
+    0%,100% { opacity: 1; }
+    50%      { opacity: 0; }
+  }
+
+  @keyframes pulse {
+    0%,100% { box-shadow: 0 0 4px var(--accent2); }
+    50%      { box-shadow: 0 0 14px var(--accent2); }
+  }
+
+  @keyframes fillBar {
+    from { width: 0; }
+    to   { width: var(--w); }
+  }
+
+  /* overlay when sidebar open */
+  .overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 998;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .3s;
+  }
+
+  .overlay.show { opacity: 1; pointer-events: all; }
+
+  /* Responsive tweaks */
+  @media (max-width: 480px) {
+    nav { padding: 0 16px; }
+    .hero-title { font-size: 3rem; }
+    .phone-card { padding: 24px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="grid-bg"></div>
+
+<!-- OVERLAY -->
+<div class="overlay" id="overlay" onclick="toggleMenu()"></div>
+
+<!-- NAVBAR -->
+<nav>
+  <div class="nav-logo">AI<span>nFinity</span></div>
+
+  <div id="clock">
+    <span class="date-str" id="dateStr">SAT 14/03</span>
+    <span id="timeStr">00:00:00</span>
+  </div>
+
+  <button class="hamburger" id="hamburger" onclick="toggleMenu()" aria-label="Menu">
+    <span></span><span></span><span></span>
+  </button>
+</nav>
+
+<!-- SIDEBAR -->
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-label">// NAVIGASI</div>
+
+  <a href="#pengenalan" onclick="closeMenu()">
+    <span class="icon">◈</span> Pengenalan
+  </a>
+  <a href="#status" onclick="closeMenu()">
+    <span class="icon">◉</span> Status
+    <span class="sidebar-badge">LIVE</span>
+  </a>
+  <a href="#nomor" onclick="closeMenu()">
+    <span class="icon">◎</span> Nomor AI
+  </a>
+
+  <div class="sidebar-divider"></div>
+
+  <a href="https://wa.me/6285715197197" target="_blank" onclick="closeMenu()">
+    <span class="icon">↗</span> Chat Sekarang
+  </a>
+</aside>
+
+<!-- HERO / PENGENALAN -->
+<section id="pengenalan">
+  <div class="hero-pre">// DIPERKENALKAN 17 MARET 2026</div>
+
+  <h1 class="hero-title">AI<span class="inf">nFinity</span></h1>
+
+  <p class="hero-subtitle">
+    Bot WhatsApp bertenaga AI yang dikembangkan oleh
+    <strong>F*****</strong> menggunakan <strong>Node.js</strong>
+    dan library <strong>Baileys</strong> — dirancang untuk menjadi
+    asisten digitalmu yang selalu online.
+  </p>
+
+  <div class="hero-badges">
+    <span class="badge badge-green">Node.js</span>
+    <span class="badge badge-blue">@whiskeysockets/baileys</span>
+    <span class="badge badge-red">v0.1.1 Beta</span>
+    <span class="badge badge-green">WhatsApp Bot</span>
+  </div>
+
+  <div class="hero-cta">
+    <a href="#nomor" class="btn btn-primary">Mulai Chat</a>
+    <a href="#status" class="btn btn-outline">Lihat Status</a>
+  </div>
+
+  <div class="terminal-box">
+    <div class="terminal-top">
+      <div class="dot dot-r"></div>
+      <div class="dot dot-y"></div>
+      <div class="dot dot-g"></div>
+      <span class="terminal-title">ainfinity@shell ~ $</span>
+    </div>
+    <div class="terminal-body">
+      <span class="line"><span class="cmd">$ node index.js</span></span>
+      <span class="line out">Initializing AInFinity Bot...</span>
+      <span class="line out"><span class="ok">✔</span> Baileys v0.1.1 loaded</span>
+      <span class="line out"><span class="ok">✔</span> WhatsApp session active</span>
+      <span class="line out"><span class="ok">✔</span> Listening for messages</span>
+      <span class="line out"><span class="cyan">[ AInFinity ]</span> Bot is ready. 🚀</span>
+      <span class="line">&nbsp;</span>
+      <span class="line"><span class="cmd">$ </span><span class="cursor"></span></span>
+    </div>
+  </div>
+</section>
+
+<!-- STATUS -->
+<section id="status">
+  <h2 class="section-title">STATUS <span class="accent">SISTEM</span></h2>
+  <p class="section-sub">// real-time system overview</p>
+
+  <div class="status-grid">
+    <div class="status-card">
+      <div class="card-label">// Bot Status</div>
+      <div class="card-value green">
+        <span class="pulse-dot"></span>ONLINE
+      </div>
+      <div class="card-desc">AInFinity aktif dan siap menerima pesan.</div>
+      <div class="prog-bar"><div class="prog-fill" style="--w:100%"></div></div>
+    </div>
+
+    <div class="status-card">
+      <div class="card-label">// Versi</div>
+      <div class="card-value">v0.1.1</div>
+      <div class="card-desc">Beta release — fitur terus berkembang.</div>
+      <div class="prog-bar"><div class="prog-fill" style="--w:11%"></div></div>
+    </div>
+
+    <div class="status-card">
+      <div class="card-label">// Runtime</div>
+      <div class="card-value cyan" id="uptime-display">00:00:00</div>
+      <div class="card-desc">Waktu sejak halaman dibuka.</div>
+      <div class="prog-bar"><div class="prog-fill" style="--w:60%"></div></div>
+    </div>
+
+    <div class="status-card">
+      <div class="card-label">// Library</div>
+      <div class="card-value" style="font-size:0.95rem; margin-top:4px;">BAILEYS</div>
+      <div class="card-desc">@whiskeysockets/baileys — unofficial WhatsApp Web API.</div>
+      <div class="prog-bar"><div class="prog-fill" style="--w:88%"></div></div>
+    </div>
+
+    <div class="status-card">
+      <div class="card-label">// Launch Date</div>
+      <div class="card-value" style="font-size:1rem; color:var(--accent2);">17 MAR 2026</div>
+      <div class="card-desc">Pertama kali diperkenalkan ke publik.</div>
+    </div>
+
+    <div class="status-card">
+      <div class="card-label">// Developer</div>
+      <div class="card-value" style="font-size:1rem; color:#fff;">F*****</div>
+      <div class="card-desc">Pengembang tunggal AInFinity bot.</div>
+    </div>
+  </div>
+</section>
+
+<!-- NOMOR AI -->
+<section id="nomor">
+  <h2 class="section-title">NOMOR <span class="accent2">AI</span></h2>
+  <p class="section-sub">// hubungi AInFinity langsung via WhatsApp</p>
+
+  <div class="phone-card">
+    <div class="wa-icon">📱</div>
+    <div class="card-label" style="text-align:center; margin-bottom:0;">// WhatsApp Number</div>
+    <div class="phone-number">+62 857 1519 7197</div>
+    <div class="phone-hint">[ NOMOR BOT AKTIF ]</div>
+    <button class="copy-btn" onclick="copyNumber(this)">⌘ SALIN NOMOR</button>
+    <p style="margin-top:20px; font-size:0.82rem; color:var(--dim); line-height:1.6;">
+      Kirim pesan !menu untuk memulai.<br>
+      AInFinity akan merespons secara otomatis.
+    </p>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div>AINFINITY BOT &nbsp;|&nbsp; <span class="f-name">DEVELOPED BY F*****</span></div>
+  <div>Node.js &nbsp;·&nbsp; @whiskeysockets/baileys v0.1.1 &nbsp;·&nbsp; Beta</div>
+  <div style="margin-top:8px; font-size:.6rem; opacity:.5;">
+    © 2026 — FIRST LAUNCH 17 MARCH 2026
+  </div>
+</footer>
+
+<script>
+  // ── CLOCK ──
+  function updateClock() {
+    const now = new Date();
+    const pad = n => String(n).padStart(2,'0');
+    const days = ['SUN','MON','TUE','WED','THU','FRI','SAT'];
+    document.getElementById('timeStr').textContent =
+      `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+    document.getElementById('dateStr').textContent =
+      `${days[now.getDay()]} ${pad(now.getDate())}/${pad(now.getMonth()+1)}`;
+  }
+  setInterval(updateClock, 1000);
+  updateClock();
+
+  // ── UPTIME (since page load) ──
+  const start = Date.now();
+  function updateUptime() {
+    const s = Math.floor((Date.now() - start) / 1000);
+    const h = Math.floor(s/3600), m = Math.floor((s%3600)/60), sec = s%60;
+    const p = n => String(n).padStart(2,'0');
+    document.getElementById('uptime-display').textContent = `${p(h)}:${p(m)}:${p(sec)}`;
+  }
+  setInterval(updateUptime, 1000);
+
+  // ── SIDEBAR ──
+  function toggleMenu() {
+    const sb = document.getElementById('sidebar');
+    const hb = document.getElementById('hamburger');
+    const ov = document.getElementById('overlay');
+    sb.classList.toggle('open');
+    hb.classList.toggle('open');
+    ov.classList.toggle('show');
+  }
+
+  function closeMenu() {
+    document.getElementById('sidebar').classList.remove('open');
+    document.getElementById('hamburger').classList.remove('open');
+    document.getElementById('overlay').classList.remove('show');
+  }
+
+  // Highlight active sidebar link on scroll
+  const sections = document.querySelectorAll('section[id]');
+  const sideLinks = document.querySelectorAll('.sidebar a[href^="#"]');
+  window.addEventListener('scroll', () => {
+    let cur = '';
+    sections.forEach(s => {
+      if (window.scrollY >= s.offsetTop - 100) cur = s.id;
+    });
+    sideLinks.forEach(a => {
+      a.classList.toggle('active', a.getAttribute('href') === '#'+cur);
+    });
+  }, { passive: true });
+
+  // ── COPY NUMBER ──
+  function copyNumber(btn) {
+    const num = '+62 857 1519 7197';
+    navigator.clipboard.writeText(num.replace(/\s|-/g,'')).then(() => {
+      const orig = btn.textContent;
+      btn.textContent = '✔ TERSALIN!';
+      btn.style.color = 'var(--accent2)';
+      setTimeout(() => { btn.textContent = orig; btn.style.color = ''; }, 2000);
+    });
+  }
+</script>
+</body>
+</html>
